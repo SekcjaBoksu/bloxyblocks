@@ -4,12 +4,14 @@
 
 // Konfiguracja parametrów gry
 const CONFIG = {
-    // Parametry wahadła
-    amplitude: 150,           // Amplituda wahania haka
-    frequency: 0.8,           // Częstotliwość wahania
+    // Parametry wahadła fizycznego
+    pendulumLength: 450,      // Długość liny wahadła (dłuższa = wolniejsze wahanie)
+    pendulumGravity: 0.3,      // Grawitacja dla wahadła (wpływa na prędkość)
+    pendulumDamping: 0.998,   // Tłumienie (0.998 = bardzo małe, prawie brak)
+    initialAngle: 0.6,        // Początkowy kąt wychylenia (w radianach)
     
     // Fizyka
-    gravity: 0.6,             // Siła grawitacji
+    gravity: 0.6,             // Siła grawitacji dla bloków
     blockWidth: 60,           // Szerokość bloku
     blockHeight: 40,          // Wysokość bloku
     
@@ -60,8 +62,13 @@ const craneHeight = 80;
 // Pozycja haka i wahadło
 let hookX = 0;
 let hookY = 0;
-const hookLength = 200;
 const hookSize = 10;
+
+// Fizyczne wahadło - stan
+let pendulumAngle = CONFIG.initialAngle;        // Aktualny kąt (w radianach)
+let pendulumAngularVelocity = 0;                // Prędkość kątowa
+let pendulumPivotX = 0;                         // Punkt zaczepienia X (będzie ustawiony w resizeCanvas)
+let pendulumPivotY = 0;                         // Punkt zaczepienia Y
 
 // Blok na haku
 let currentBlock = null;
@@ -134,6 +141,10 @@ function resizeCanvas() {
     foundation.x = canvasWidth / 2 - 100;
     foundation.width = 200;
     foundation.y = canvasHeight - foundation.height;
+    
+    // Punkt zaczepienia wahadła (na żurawiu, na środku, na górze ekranu)
+    pendulumPivotX = canvasWidth / 2;
+    pendulumPivotY = craneHeight; // Na dole żurawia, który jest na górze ekranu
 }
 
 // Obsługa zdarzeń
@@ -166,9 +177,13 @@ function resetGame() {
     particles = [];
     isBlockAttached = true;
     
-    // Pozycja startowa haka (środek ekranu)
-    hookX = canvasWidth / 2;
-    hookY = 100;
+    // Reset wahadła
+    pendulumAngle = CONFIG.initialAngle;
+    pendulumAngularVelocity = 0;
+    
+    // Oblicz pozycję startową haka na podstawie kąta
+    hookX = pendulumPivotX + CONFIG.pendulumLength * Math.sin(pendulumAngle);
+    hookY = pendulumPivotY + CONFIG.pendulumLength * Math.cos(pendulumAngle);
     
     // Utworzenie pierwszego bloku
     createNewBlock();
@@ -178,7 +193,7 @@ function resetGame() {
 function createNewBlock() {
     currentBlock = {
         x: hookX - CONFIG.blockWidth / 2,
-        y: hookY + hookLength,
+        y: hookY, // Blok jest pod hakiem (hak jest już na końcu liny)
         width: CONFIG.blockWidth,
         height: CONFIG.blockHeight,
         velocityY: 0,
@@ -214,18 +229,29 @@ function handleClick(e) {
     currentBlock.velocityY = 0;
 }
 
-// Aktualizacja wahadła
+// Aktualizacja wahadła fizycznego
 function updatePendulum(dt) {
-    gameTime += dt;
+    // Fizyczne wahadło - równanie ruchu
+    // Przyspieszenie kątowe = -(g / L) * sin(theta)
+    const angularAcceleration = -(CONFIG.pendulumGravity / CONFIG.pendulumLength) * Math.sin(pendulumAngle);
     
-    // Ruch wahadłowy haka
-    const centerX = canvasWidth / 2;
-    hookX = centerX + CONFIG.amplitude * Math.sin(gameTime * CONFIG.frequency);
+    // Aktualizuj prędkość kątową
+    pendulumAngularVelocity += angularAcceleration * dt;
+    
+    // Zastosuj tłumienie (opcjonalne, bardzo małe)
+    pendulumAngularVelocity *= CONFIG.pendulumDamping;
+    
+    // Aktualizuj kąt
+    pendulumAngle += pendulumAngularVelocity * dt;
+    
+    // Oblicz pozycję haka na podstawie kąta i długości liny
+    hookX = pendulumPivotX + CONFIG.pendulumLength * Math.sin(pendulumAngle);
+    hookY = pendulumPivotY + CONFIG.pendulumLength * Math.cos(pendulumAngle);
     
     // Aktualizacja pozycji bloku, jeśli jest podczepiony
     if (isBlockAttached && currentBlock) {
         currentBlock.x = hookX - CONFIG.blockWidth / 2;
-        currentBlock.y = hookY + hookLength;
+        currentBlock.y = hookY;
     }
 }
 
@@ -379,9 +405,13 @@ function gameOver(message) {
 
 // Główna pętla aktualizacji
 function update(dt) {
+    // Wahadło działa zawsze (również w menu)
+    if (gameState === GAME_STATE.PLAYING || gameState === GAME_STATE.MENU) {
+        updatePendulum(dt);
+    }
+    
     if (gameState !== GAME_STATE.PLAYING) return;
     
-    updatePendulum(dt);
     updateFallingBlock(dt);
     updateCamera();
     updateShake();
@@ -428,21 +458,26 @@ function drawCloud(x, y, size) {
 // Renderowanie żurawia
 function renderCrane() {
     ctx.save();
-    ctx.translate(0, -cameraY + cameraShake.y);
+    // Żuraw jest zawsze na górze ekranu, niezależnie od kamery
+    // Tylko lekki shake może go przesunąć
+    ctx.translate(0, cameraShake.y);
     
-    // Podstawa żurawia
+    // Podstawa żurawia - na górze ekranu
+    const craneScreenX = canvasWidth / 2 - craneWidth / 2;
+    const craneScreenY = 0;
+    
     ctx.fillStyle = '#4a4a4a';
-    ctx.fillRect(craneX, craneY, craneWidth, craneHeight);
+    ctx.fillRect(craneScreenX, craneScreenY, craneWidth, craneHeight);
     
     // Wysięgnik żurawia
     ctx.fillStyle = '#2a2a2a';
-    ctx.fillRect(craneX + craneWidth - 20, craneY, 20, 30);
+    ctx.fillRect(craneScreenX + craneWidth - 20, craneScreenY, 20, 30);
     
     // Trójkąt wspierający
     ctx.beginPath();
-    ctx.moveTo(craneX + craneWidth, craneY);
-    ctx.lineTo(craneX + craneWidth + 30, craneY + 40);
-    ctx.lineTo(craneX + craneWidth, craneY + 40);
+    ctx.moveTo(craneScreenX + craneWidth, craneScreenY);
+    ctx.lineTo(craneScreenX + craneWidth + 30, craneScreenY + 40);
+    ctx.lineTo(craneScreenX + craneWidth, craneScreenY + 40);
     ctx.closePath();
     ctx.fill();
     
@@ -452,13 +487,18 @@ function renderCrane() {
 // Renderowanie liny i haka
 function renderHook() {
     ctx.save();
+    // Hak i lina przesuwają się z kamerą, ale pivot jest na górze ekranu
     ctx.translate(0, -cameraY + cameraShake.y);
+    
+    // Pivot jest zawsze na górze ekranu (na żurawiu)
+    const pivotScreenX = pendulumPivotX;
+    const pivotScreenY = craneHeight; // Na dole żurawia
     
     // Lina
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(canvasWidth / 2, craneY + craneHeight);
+    ctx.moveTo(pivotScreenX, pivotScreenY);
     ctx.lineTo(hookX, hookY);
     ctx.stroke();
     
@@ -557,6 +597,19 @@ function render() {
     // Tło
     renderBackground();
     
+    // Żuraw jest zawsze widoczny (również w menu)
+    renderCrane();
+    
+    // Hak i lina są widoczne w menu i podczas gry
+    if (gameState === GAME_STATE.PLAYING || gameState === GAME_STATE.MENU) {
+        renderHook();
+        
+        // Blok na haku (tylko jeśli jest)
+        if (currentBlock && isBlockAttached) {
+            renderBlock(currentBlock, true);
+        }
+    }
+    
     if (gameState === GAME_STATE.PLAYING) {
         // Fundament
         renderFoundation();
@@ -564,14 +617,8 @@ function render() {
         // Wieżowiec
         renderTower();
         
-        // Żuraw
-        renderCrane();
-        
-        // Hak i lina
-        renderHook();
-        
-        // Aktualny blok
-        if (currentBlock) {
+        // Aktualny blok (spadający)
+        if (currentBlock && !currentBlock.attached) {
             renderBlock(currentBlock, true);
         }
         
