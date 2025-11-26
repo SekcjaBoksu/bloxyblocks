@@ -182,8 +182,10 @@ function resetGame() {
     pendulumAngularVelocity = 0;
     
     // Oblicz pozycję startową haka na podstawie kąta
+    // Pivot w świecie = pozycja ekranowa + cameraY
+    const pivotWorldY = pendulumPivotY + cameraY;
     hookX = pendulumPivotX + CONFIG.pendulumLength * Math.sin(pendulumAngle);
-    hookY = pendulumPivotY + CONFIG.pendulumLength * Math.cos(pendulumAngle);
+    hookY = pivotWorldY + CONFIG.pendulumLength * Math.cos(pendulumAngle);
     
     // Utworzenie pierwszego bloku
     createNewBlock();
@@ -243,9 +245,12 @@ function updatePendulum(dt) {
     // Aktualizuj kąt
     pendulumAngle += pendulumAngularVelocity * dt;
     
-    // Oblicz pozycję haka na podstawie kąta i długości liny
+    // Pivot przesuwa się razem z kamerą - pozycja w świecie = pozycja ekranowa + cameraY
+    const pivotWorldY = pendulumPivotY + cameraY;
+    
+    // Oblicz pozycję haka na podstawie kąta i długości liny (w koordynatach świata)
     hookX = pendulumPivotX + CONFIG.pendulumLength * Math.sin(pendulumAngle);
-    hookY = pendulumPivotY + CONFIG.pendulumLength * Math.cos(pendulumAngle);
+    hookY = pivotWorldY + CONFIG.pendulumLength * Math.cos(pendulumAngle);
     
     // Aktualizacja pozycji bloku, jeśli jest podczepiony
     if (isBlockAttached && currentBlock) {
@@ -348,16 +353,17 @@ function updateCamera() {
     // Stąd: cameraY = topY - CONFIG.topMargin
     const targetCameraY = topY - CONFIG.topMargin;
     
-    // Kamera nie może iść w dół (poniżej 0)
-    const finalTargetY = Math.max(0, targetCameraY);
+    // Kamera zawsze przesuwa się w górę, gdy wieżowiec rośnie
+    // Nie ograniczamy do 0 - pozwalamy kamerze przesuwać się w górę bez limitu
+    // Fundament może być poza ekranem (poniżej) gdy wieżowiec rośnie
     
     // Płynne przejście (lerp) tylko w górę
-    if (finalTargetY > cameraY) {
-        cameraY += (finalTargetY - cameraY) * CONFIG.cameraLerp;
+    if (targetCameraY > cameraY) {
+        cameraY += (targetCameraY - cameraY) * CONFIG.cameraLerp;
     }
-    // Jeśli kamera jest za wysoko, natychmiast ją obniż (ale nie poniżej 0)
-    else if (finalTargetY < cameraY) {
-        cameraY = finalTargetY;
+    // Jeśli kamera jest za wysoko (np. po usunięciu bloków), natychmiast ją obniż
+    else if (targetCameraY < cameraY) {
+        cameraY = targetCameraY;
     }
 }
 
@@ -473,18 +479,19 @@ function drawCloud(x, y, size) {
 // Renderowanie liny i haka
 function renderHook() {
     ctx.save();
-    // Hak i lina przesuwają się z kamerą, ale pivot jest na górze ekranu
+    // Wszystko przesuwa się z kamerą
     ctx.translate(0, -cameraY + cameraShake.y);
     
-    // Pivot jest zawsze na górze ekranu (bez żurawia)
-    const pivotScreenX = pendulumPivotX;
-    const pivotScreenY = pendulumPivotY; // Na górze ekranu
+    // Pivot w koordynatach świata - pozycja ekranowa + cameraY
+    // Na ekranie pivot jest zawsze na górze (pendulumPivotY), ale w świecie przesuwa się z kamerą
+    const pivotWorldX = pendulumPivotX;
+    const pivotWorldY = pendulumPivotY + cameraY;
     
     // Lina
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(pivotScreenX, pivotScreenY);
+    ctx.moveTo(pivotWorldX, pivotWorldY);
     ctx.lineTo(hookX, hookY);
     ctx.stroke();
     
