@@ -204,10 +204,19 @@ function createNewBlock() {
     };
 }
 
-// Losowy kolor bloku
+// Kolor bloku - różne odcienie pomarańczowego
 function getRandomBlockColor() {
-    const colors = ['#ff6b35', '#f7931e', '#c4c4c4', '#8b4513', '#cd853f'];
-    return colors[Math.floor(Math.random() * colors.length)];
+    const orangeShades = [
+        '#FF8C42', // Jasny pomarańczowy
+        '#FF6B35', // Średni pomarańczowy
+        '#FF7F50', // Koralowy pomarańczowy
+        '#FF6347', // Pomidorowy
+        '#FFA500', // Standardowy pomarańczowy
+        '#FF8C00', // Ciemniejszy pomarańczowy
+        '#FF7F00', // Ciemny pomarańczowy
+        '#FF6B00'  // Bardzo ciemny pomarańczowy
+    ];
+    return orangeShades[Math.floor(Math.random() * orangeShades.length)];
 }
 
 // Start gry
@@ -525,8 +534,8 @@ function renderBlock(block, isCurrent = false, blockIndex = -1) {
     ctx.fillStyle = block.color;
     ctx.fillRect(block.x, block.y, block.width, block.height);
     
-    // Obramowanie
-    ctx.strokeStyle = '#000';
+    // Obramowanie - ciemniejszy pomarańczowy dla pixel-art efektu
+    ctx.strokeStyle = '#CC5500'; // Ciemniejszy pomarańczowy
     ctx.lineWidth = 2;
     ctx.strokeRect(block.x, block.y, block.width, block.height);
     
@@ -556,99 +565,92 @@ function renderBlock(block, isCurrent = false, blockIndex = -1) {
     ctx.restore();
 }
 
-// Rysowanie drzwi
+// Rysowanie drzwi w stylu pixel-art
 function drawDoor(block) {
-    const doorWidth = block.width * 0.35;
-    const doorHeight = block.height * 0.65;
+    const doorWidth = block.width * 0.4;
+    const doorHeight = block.height * 0.7;
     const doorX = block.x + (block.width - doorWidth) / 2;
-    const doorY = block.y + block.height - doorHeight - 2;
+    const doorY = block.y + block.height - doorHeight;
     
-    // Drzwi - główny kształt
-    ctx.fillStyle = '#8B4513'; // Brązowy
-    ctx.fillRect(doorX, doorY, doorWidth, doorHeight);
+    // Dekoracyjne elementy po bokach drzwi (jak na obrazku)
+    const decorWidth = block.width * 0.08;
+    const decorHeight = doorHeight * 0.8;
+    const decorY = doorY + (doorHeight - decorHeight) / 2;
     
-    // Obramowanie drzwi
+    // Lewy dekoracyjny element
+    ctx.fillStyle = '#8B4513'; // Ciemny brąz
+    ctx.fillRect(block.x + (block.width - doorWidth) / 2 - decorWidth - 2, decorY, decorWidth, decorHeight);
     ctx.strokeStyle = '#654321';
     ctx.lineWidth = 2;
+    ctx.strokeRect(block.x + (block.width - doorWidth) / 2 - decorWidth - 2, decorY, decorWidth, decorHeight);
+    
+    // Prawy dekoracyjny element
+    ctx.fillRect(block.x + (block.width + doorWidth) / 2 + 2, decorY, decorWidth, decorHeight);
+    ctx.strokeRect(block.x + (block.width + doorWidth) / 2 + 2, decorY, decorWidth, decorHeight);
+    
+    // Drzwi - jasnozielone (jak na obrazku)
+    ctx.fillStyle = '#90EE90'; // Jasnozielony
+    ctx.fillRect(doorX, doorY, doorWidth, doorHeight);
+    
+    // Obramowanie drzwi - ciemny brąz
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 3;
     ctx.strokeRect(doorX, doorY, doorWidth, doorHeight);
     
-    // Panel drzwi (linia pozioma)
+    // Panel drzwi (linia pozioma) - ciemny brąz
     ctx.strokeStyle = '#654321';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(doorX + 3, doorY + doorHeight * 0.6);
-    ctx.lineTo(doorX + doorWidth - 3, doorY + doorHeight * 0.6);
+    ctx.moveTo(doorX + 4, doorY + doorHeight * 0.65);
+    ctx.lineTo(doorX + doorWidth - 4, doorY + doorHeight * 0.65);
     ctx.stroke();
-    
-    // Klamka
-    ctx.fillStyle = '#FFD700'; // Złoty
-    ctx.beginPath();
-    ctx.arc(doorX + doorWidth - 10, doorY + doorHeight / 2, 4, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Odbicie światła na klamce
-    ctx.fillStyle = '#FFF8DC';
-    ctx.beginPath();
-    ctx.arc(doorX + doorWidth - 11, doorY + doorHeight / 2 - 1, 1.5, 0, Math.PI * 2);
-    ctx.fill();
 }
 
-// Rysowanie okien
+// Rysowanie okien w stylu pixel-art
 function drawWindows(block, withDoor = false) {
-    // Większe okna - zajmują więcej miejsca
-    const windowSize = block.width * 0.28;
-    const windowSpacing = block.width * 0.08;
+    // Prostokątne okna (nie kwadratowe) - jak na obrazku
+    const windowWidth = block.width * 0.25;
+    const windowHeight = block.width * 0.3; // Wyższe niż szersze
+    const windowSpacing = block.width * 0.1;
     
     // Wycentrowanie - oblicz całkowitą szerokość dwóch okien + odstępu
-    const totalWindowsWidth = windowSize * 2 + windowSpacing;
+    const totalWindowsWidth = windowWidth * 2 + windowSpacing;
     const startX = block.x + (block.width - totalWindowsWidth) / 2;
     
     // Jeśli są drzwi, okna wyżej, inaczej wycentrowane pionowo
     const windowY = withDoor 
-        ? block.y + block.height * 0.12 
-        : block.y + (block.height - windowSize) / 2;
+        ? block.y + block.height * 0.15 
+        : block.y + (block.height - windowHeight) / 2;
     
     // Dwa okna obok siebie
     for (let i = 0; i < 2; i++) {
-        const windowX = startX + i * (windowSize + windowSpacing);
+        const windowX = startX + i * (windowWidth + windowSpacing);
         
-        // Zewnętrzna rama okna (ciemniejsza, grubsza)
-        ctx.fillStyle = '#1a1a1a'; // Bardzo ciemny szary
-        ctx.fillRect(windowX - 2, windowY - 2, windowSize + 4, windowSize + 4);
+        // Rama okna - ciemny brąz (jak na obrazku)
+        ctx.fillStyle = '#8B4513'; // Ciemny brąz
+        ctx.fillRect(windowX - 2, windowY - 2, windowWidth + 4, windowHeight + 4);
         
-        // Wewnętrzna rama okna (grubsza)
-        ctx.fillStyle = '#3a3a3a'; // Ciemny szary
-        ctx.fillRect(windowX - 1, windowY - 1, windowSize + 2, windowSize + 2);
+        // Wewnętrzna rama
+        ctx.strokeStyle = '#654321';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(windowX - 2, windowY - 2, windowWidth + 4, windowHeight + 4);
         
-        // Główna rama okna
-        ctx.fillStyle = '#4a4a4a'; // Średni szary
-        ctx.fillRect(windowX, windowY, windowSize, windowSize);
+        // Szyba - jasnoniebieski (jak na obrazku), bez gradientu (pixel-art)
+        ctx.fillStyle = '#87CEEB'; // Jasnoniebieski
+        ctx.fillRect(windowX, windowY, windowWidth, windowHeight);
         
-        // Szyba z gradientem (efekt światła) - bardziej widoczna
-        const gradient = ctx.createLinearGradient(windowX, windowY, windowX + windowSize, windowY + windowSize);
-        gradient.addColorStop(0, '#B0E0E6'); // Jaśniejszy niebieski
-        gradient.addColorStop(0.3, '#87CEEB'); // Średni niebieski
-        gradient.addColorStop(0.7, '#5F9EA0'); // Ciemniejszy niebieski
-        gradient.addColorStop(1, '#4682B4'); // Najciemniejszy niebieski
-        ctx.fillStyle = gradient;
-        ctx.fillRect(windowX + 3, windowY + 3, windowSize - 6, windowSize - 6);
-        
-        // Odbicie światła na szybie (bardziej widoczne)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fillRect(windowX + 4, windowY + 4, windowSize * 0.35, windowSize * 0.35);
-        
-        // Krzyż w oknie (ramy) - grubsze linie, bardziej widoczne
-        ctx.strokeStyle = '#1a1a1a';
+        // Krzyż w oknie (ramy) - ciemny brąz
+        ctx.strokeStyle = '#654321';
         ctx.lineWidth = 2;
         // Pionowa rama
         ctx.beginPath();
-        ctx.moveTo(windowX + windowSize / 2, windowY + 2);
-        ctx.lineTo(windowX + windowSize / 2, windowY + windowSize - 2);
+        ctx.moveTo(windowX + windowWidth / 2, windowY);
+        ctx.lineTo(windowX + windowWidth / 2, windowY + windowHeight);
         ctx.stroke();
         // Pozioma rama
         ctx.beginPath();
-        ctx.moveTo(windowX + 2, windowY + windowSize / 2);
-        ctx.lineTo(windowX + windowSize - 2, windowY + windowSize / 2);
+        ctx.moveTo(windowX, windowY + windowHeight / 2);
+        ctx.lineTo(windowX + windowWidth, windowY + windowHeight / 2);
         ctx.stroke();
     }
 }
