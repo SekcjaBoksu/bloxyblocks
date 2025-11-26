@@ -511,7 +511,7 @@ function renderHook() {
 }
 
 // Renderowanie bloku
-function renderBlock(block, isCurrent = false) {
+function renderBlock(block, isCurrent = false, blockIndex = -1) {
     ctx.save();
     ctx.translate(0, -cameraY + cameraShake.y);
     
@@ -521,7 +521,7 @@ function renderBlock(block, isCurrent = false) {
         ctx.fillRect(block.x + 3, block.y + block.height + 5, block.width, 10);
     }
     
-    // Blok
+    // Blok - główny kształt
     ctx.fillStyle = block.color;
     ctx.fillRect(block.x, block.y, block.width, block.height);
     
@@ -530,17 +530,209 @@ function renderBlock(block, isCurrent = false) {
     ctx.lineWidth = 2;
     ctx.strokeRect(block.x, block.y, block.width, block.height);
     
-    // Wewnętrzny detal
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.fillRect(block.x + 5, block.y + 5, block.width - 10, 10);
+    // Detale w zależności od pozycji w wieżowcu
+    // Jeśli blockIndex == -1, to blok na haku - sprawdź który to będzie blok
+    let actualIndex = blockIndex;
+    if (blockIndex === -1) {
+        // Blok na haku - sprawdź który to będzie blok
+        actualIndex = tower.length;
+    }
+    
+    if (actualIndex === 0) {
+        // Pierwszy blok - tylko drzwi
+        drawDoor(block);
+    } else if (actualIndex > 0 && actualIndex < 19) {
+        // Bloki 2-19 - okna
+        drawWindows(block);
+    } else if (actualIndex === 19) {
+        // Blok 20 - dach
+        drawRoof(block);
+    } else {
+        // Dla innych przypadków - prosty detal
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(block.x + 5, block.y + 5, block.width - 10, 10);
+    }
     
     ctx.restore();
 }
 
+// Rysowanie drzwi
+function drawDoor(block) {
+    const doorWidth = block.width * 0.35;
+    const doorHeight = block.height * 0.65;
+    const doorX = block.x + (block.width - doorWidth) / 2;
+    const doorY = block.y + block.height - doorHeight - 2;
+    
+    // Drzwi - główny kształt
+    ctx.fillStyle = '#8B4513'; // Brązowy
+    ctx.fillRect(doorX, doorY, doorWidth, doorHeight);
+    
+    // Obramowanie drzwi
+    ctx.strokeStyle = '#654321';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(doorX, doorY, doorWidth, doorHeight);
+    
+    // Panel drzwi (linia pozioma)
+    ctx.strokeStyle = '#654321';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(doorX + 3, doorY + doorHeight * 0.6);
+    ctx.lineTo(doorX + doorWidth - 3, doorY + doorHeight * 0.6);
+    ctx.stroke();
+    
+    // Klamka
+    ctx.fillStyle = '#FFD700'; // Złoty
+    ctx.beginPath();
+    ctx.arc(doorX + doorWidth - 10, doorY + doorHeight / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Odbicie światła na klamce
+    ctx.fillStyle = '#FFF8DC';
+    ctx.beginPath();
+    ctx.arc(doorX + doorWidth - 11, doorY + doorHeight / 2 - 1, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// Rysowanie okien
+function drawWindows(block, withDoor = false) {
+    // Większe okna - zajmują więcej miejsca
+    const windowSize = block.width * 0.28;
+    const windowSpacing = block.width * 0.08;
+    
+    // Wycentrowanie - oblicz całkowitą szerokość dwóch okien + odstępu
+    const totalWindowsWidth = windowSize * 2 + windowSpacing;
+    const startX = block.x + (block.width - totalWindowsWidth) / 2;
+    
+    // Jeśli są drzwi, okna wyżej, inaczej wycentrowane pionowo
+    const windowY = withDoor 
+        ? block.y + block.height * 0.12 
+        : block.y + (block.height - windowSize) / 2;
+    
+    // Dwa okna obok siebie
+    for (let i = 0; i < 2; i++) {
+        const windowX = startX + i * (windowSize + windowSpacing);
+        
+        // Zewnętrzna rama okna (ciemniejsza, grubsza)
+        ctx.fillStyle = '#1a1a1a'; // Bardzo ciemny szary
+        ctx.fillRect(windowX - 2, windowY - 2, windowSize + 4, windowSize + 4);
+        
+        // Wewnętrzna rama okna (grubsza)
+        ctx.fillStyle = '#3a3a3a'; // Ciemny szary
+        ctx.fillRect(windowX - 1, windowY - 1, windowSize + 2, windowSize + 2);
+        
+        // Główna rama okna
+        ctx.fillStyle = '#4a4a4a'; // Średni szary
+        ctx.fillRect(windowX, windowY, windowSize, windowSize);
+        
+        // Szyba z gradientem (efekt światła) - bardziej widoczna
+        const gradient = ctx.createLinearGradient(windowX, windowY, windowX + windowSize, windowY + windowSize);
+        gradient.addColorStop(0, '#B0E0E6'); // Jaśniejszy niebieski
+        gradient.addColorStop(0.3, '#87CEEB'); // Średni niebieski
+        gradient.addColorStop(0.7, '#5F9EA0'); // Ciemniejszy niebieski
+        gradient.addColorStop(1, '#4682B4'); // Najciemniejszy niebieski
+        ctx.fillStyle = gradient;
+        ctx.fillRect(windowX + 3, windowY + 3, windowSize - 6, windowSize - 6);
+        
+        // Odbicie światła na szybie (bardziej widoczne)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillRect(windowX + 4, windowY + 4, windowSize * 0.35, windowSize * 0.35);
+        
+        // Krzyż w oknie (ramy) - grubsze linie, bardziej widoczne
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2;
+        // Pionowa rama
+        ctx.beginPath();
+        ctx.moveTo(windowX + windowSize / 2, windowY + 2);
+        ctx.lineTo(windowX + windowSize / 2, windowY + windowSize - 2);
+        ctx.stroke();
+        // Pozioma rama
+        ctx.beginPath();
+        ctx.moveTo(windowX + 2, windowY + windowSize / 2);
+        ctx.lineTo(windowX + windowSize - 2, windowY + windowSize / 2);
+        ctx.stroke();
+    }
+}
+
+// Rysowanie dachu
+function drawRoof(block) {
+    // Dach trójkątny
+    const roofHeight = block.height * 0.5;
+    const roofTopY = block.y - roofHeight;
+    
+    // Gradient dachu (efekt światła)
+    const roofGradient = ctx.createLinearGradient(
+        block.x, block.y,
+        block.x + block.width / 2, roofTopY
+    );
+    roofGradient.addColorStop(0, '#A52A2A'); // Ciemniejszy czerwony
+    roofGradient.addColorStop(0.5, '#DC143C'); // Jaśniejszy czerwony
+    roofGradient.addColorStop(1, '#8B0000'); // Najciemniejszy
+    
+    ctx.fillStyle = roofGradient;
+    ctx.beginPath();
+    ctx.moveTo(block.x, block.y);
+    ctx.lineTo(block.x + block.width / 2, roofTopY);
+    ctx.lineTo(block.x + block.width, block.y);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Obramowanie dachu
+    ctx.strokeStyle = '#5a0000';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(block.x, block.y);
+    ctx.lineTo(block.x + block.width / 2, roofTopY);
+    ctx.lineTo(block.x + block.width, block.y);
+    ctx.stroke();
+    
+    // Dachówki (linie poziome)
+    ctx.strokeStyle = 'rgba(139, 0, 0, 0.4)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+        const y = block.y - (roofHeight / 4) * i;
+        const x1 = block.x + (block.width / 2 - block.x) * (1 - i / 4);
+        const x2 = block.x + block.width - (block.width / 2 - block.x) * (1 - i / 4);
+        ctx.beginPath();
+        ctx.moveTo(x1, y);
+        ctx.lineTo(x2, y);
+        ctx.stroke();
+    }
+    
+    // Komin na dachu
+    const chimneyWidth = block.width * 0.18;
+    const chimneyHeight = roofHeight * 0.7;
+    const chimneyX = block.x + block.width * 0.68;
+    const chimneyY = roofTopY - chimneyHeight;
+    
+    // Komin z gradientem
+    const chimneyGradient = ctx.createLinearGradient(chimneyX, chimneyY, chimneyX + chimneyWidth, chimneyY);
+    chimneyGradient.addColorStop(0, '#3a3a3a');
+    chimneyGradient.addColorStop(1, '#5a5a5a');
+    ctx.fillStyle = chimneyGradient;
+    ctx.fillRect(chimneyX, chimneyY, chimneyWidth, chimneyHeight);
+    
+    // Obramowanie komina
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(chimneyX, chimneyY, chimneyWidth, chimneyHeight);
+    
+    // Dym z komina (bardziej realistyczny)
+    ctx.fillStyle = 'rgba(220, 220, 220, 0.7)';
+    ctx.beginPath();
+    ctx.arc(chimneyX + chimneyWidth / 2, chimneyY - 3, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(chimneyX + chimneyWidth / 2 + 4, chimneyY - 8, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(chimneyX + chimneyWidth / 2 - 2, chimneyY - 12, 4, 0, Math.PI * 2);
+    ctx.fill();
+}
+
 // Renderowanie wieżowca
 function renderTower() {
-    tower.forEach(block => {
-        renderBlock(block);
+    tower.forEach((block, index) => {
+        renderBlock(block, false, index);
     });
 }
 
@@ -594,9 +786,10 @@ function render() {
     if (gameState === GAME_STATE.PLAYING || gameState === GAME_STATE.MENU) {
         renderHook();
         
-        // Blok na haku (tylko jeśli jest)
+        // Blok na haku (tylko jeśli jest) - z odpowiednimi detalami
         if (currentBlock && isBlockAttached) {
-            renderBlock(currentBlock, true);
+            const nextBlockIndex = tower.length; // Który to będzie blok
+            renderBlock(currentBlock, true, nextBlockIndex);
         }
     }
     
@@ -607,9 +800,9 @@ function render() {
         // Wieżowiec
         renderTower();
         
-        // Aktualny blok (spadający)
+        // Aktualny blok (spadający) - bez detali, bo jeszcze nie jest w wieżowcu
         if (currentBlock && !currentBlock.attached) {
-            renderBlock(currentBlock, true);
+            renderBlock(currentBlock, true, -1);
         }
         
         // Cząsteczki
