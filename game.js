@@ -104,10 +104,22 @@ function init() {
     resetGame();
 }
 
-// Ustawienie rozmiaru canvas
+// Ustawienie rozmiaru canvas - wąski ekran (jak telefon, pionowy)
 function resizeCanvas() {
-    canvasWidth = window.innerWidth;
-    canvasHeight = window.innerHeight;
+    const maxWidth = window.innerWidth;
+    const maxHeight = window.innerHeight;
+    // Aspect ratio jak telefon (9:16 lub podobny)
+    const aspectRatio = 9 / 16; // Wąski, pionowy ekran
+    
+    if (maxWidth / maxHeight > aspectRatio) {
+        // Ekran jest szerszy niż aspect ratio - dopasuj wysokość
+        canvasHeight = maxHeight;
+        canvasWidth = maxHeight * aspectRatio;
+    } else {
+        // Ekran jest węższy - dopasuj szerokość
+        canvasWidth = maxWidth;
+        canvasHeight = maxWidth / aspectRatio;
+    }
     
     canvas.width = canvasWidth * dpr;
     canvas.height = canvasHeight * dpr;
