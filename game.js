@@ -15,7 +15,7 @@ const CONFIG = {
     blockHeight: 40,          // Wysokość bloku
     
     // Kolizje
-    minOverlap: 0.5,          // Minimalne pokrycie (50%)
+    minOverlap: 0.3,          // Minimalne pokrycie (30%)
     
     // Cel gry
     targetBlocks: 20,         // Liczba bloków do osiągnięcia
