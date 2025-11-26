@@ -7,7 +7,6 @@ const CONFIG = {
     // Parametry wahadła fizycznego
     pendulumLength: 450,      // Długość liny wahadła (dłuższa = wolniejsze wahanie)
     pendulumGravity: 0.3,      // Grawitacja dla wahadła (wpływa na prędkość)
-    pendulumDamping: 0.998,   // Tłumienie (0.998 = bardzo małe, prawie brak)
     initialAngle: 0.6,        // Początkowy kąt wychylenia (w radianach)
     
     // Fizyka
@@ -23,6 +22,7 @@ const CONFIG = {
     
     // Kamera
     cameraLerp: 0.1,          // Płynność ruchu kamery
+    topMargin: 600,           // Stała odległość od góry ekranu do najwyższego bloku
     
     // Efekty
     enableShake: true,        // Włącz drżenie kamery
@@ -137,14 +137,14 @@ function resizeCanvas() {
     canvas.style.width = canvasWidth + 'px';
     canvas.style.height = canvasHeight + 'px';
     
-    // Pozycja żurawia na górze ekranu
+    // Pozycja fundamentu w koordynatach świata (nie ekranowych)
     foundation.x = canvasWidth / 2 - 100;
     foundation.width = 200;
-    foundation.y = canvasHeight - foundation.height;
+    foundation.y = canvasHeight - foundation.height; // Pozycja startowa w koordynatach świata
     
-    // Punkt zaczepienia wahadła (na żurawiu, na środku, na górze ekranu)
+    // Punkt zaczepienia wahadła (na górze ekranu, na środku)
     pendulumPivotX = canvasWidth / 2;
-    pendulumPivotY = craneHeight; // Na dole żurawia, który jest na górze ekranu
+    pendulumPivotY = 20; // Na górze ekranu (bez żurawia)
 }
 
 // Obsługa zdarzeń
@@ -238,8 +238,7 @@ function updatePendulum(dt) {
     // Aktualizuj prędkość kątową
     pendulumAngularVelocity += angularAcceleration * dt;
     
-    // Zastosuj tłumienie (opcjonalne, bardzo małe)
-    pendulumAngularVelocity *= CONFIG.pendulumDamping;
+    // Brak tłumienia - wahadło zachowuje energię i nie wytraca prędkości
     
     // Aktualizuj kąt
     pendulumAngle += pendulumAngularVelocity * dt;
@@ -332,20 +331,34 @@ function calculateOverlap(block, target) {
 
 // Aktualizacja kamery
 function updateCamera() {
-    if (tower.length === 0) return;
+    // Określ najwyższy element (blok lub fundament)
+    let topY;
+    if (tower.length > 0) {
+        // Najwyższy blok
+        const highestBlock = tower[tower.length - 1];
+        topY = highestBlock.y;
+    } else {
+        // Jeśli nie ma bloków, użyj fundamentu
+        topY = foundation.y;
+    }
     
-    // Najwyższy blok
-    const highestBlock = tower[tower.length - 1];
-    const highestY = highestBlock.y;
+    // Oblicz docelową pozycję kamery, żeby utrzymać stałą odległość od góry ekranu
+    // Na ekranie najwyższy element powinien być na pozycji CONFIG.topMargin
+    // Więc: topY - cameraY = CONFIG.topMargin
+    // Stąd: cameraY = topY - CONFIG.topMargin
+    const targetCameraY = topY - CONFIG.topMargin;
     
-    // Pozycja kamery powinna być wycentrowana na najwyższym bloku
-    const targetCameraY = highestY - canvasHeight / 2 + 200;
+    // Kamera nie może iść w dół (poniżej 0)
+    const finalTargetY = Math.max(0, targetCameraY);
     
-    // Płynne przejście (lerp)
-    cameraY += (targetCameraY - cameraY) * CONFIG.cameraLerp;
-    
-    // Upewnij się, że kamera nie idzie w dół
-    cameraY = Math.min(cameraY, targetCameraY);
+    // Płynne przejście (lerp) tylko w górę
+    if (finalTargetY > cameraY) {
+        cameraY += (finalTargetY - cameraY) * CONFIG.cameraLerp;
+    }
+    // Jeśli kamera jest za wysoko, natychmiast ją obniż (ale nie poniżej 0)
+    else if (finalTargetY < cameraY) {
+        cameraY = finalTargetY;
+    }
 }
 
 // Wstrząs kamery
@@ -455,34 +468,7 @@ function drawCloud(x, y, size) {
     ctx.fill();
 }
 
-// Renderowanie żurawia
-function renderCrane() {
-    ctx.save();
-    // Żuraw jest zawsze na górze ekranu, niezależnie od kamery
-    // Tylko lekki shake może go przesunąć
-    ctx.translate(0, cameraShake.y);
-    
-    // Podstawa żurawia - na górze ekranu
-    const craneScreenX = canvasWidth / 2 - craneWidth / 2;
-    const craneScreenY = 0;
-    
-    ctx.fillStyle = '#4a4a4a';
-    ctx.fillRect(craneScreenX, craneScreenY, craneWidth, craneHeight);
-    
-    // Wysięgnik żurawia
-    ctx.fillStyle = '#2a2a2a';
-    ctx.fillRect(craneScreenX + craneWidth - 20, craneScreenY, 20, 30);
-    
-    // Trójkąt wspierający
-    ctx.beginPath();
-    ctx.moveTo(craneScreenX + craneWidth, craneScreenY);
-    ctx.lineTo(craneScreenX + craneWidth + 30, craneScreenY + 40);
-    ctx.lineTo(craneScreenX + craneWidth, craneScreenY + 40);
-    ctx.closePath();
-    ctx.fill();
-    
-    ctx.restore();
-}
+// Żuraw usunięty - pozostaje tylko lina
 
 // Renderowanie liny i haka
 function renderHook() {
@@ -490,9 +476,9 @@ function renderHook() {
     // Hak i lina przesuwają się z kamerą, ale pivot jest na górze ekranu
     ctx.translate(0, -cameraY + cameraShake.y);
     
-    // Pivot jest zawsze na górze ekranu (na żurawiu)
+    // Pivot jest zawsze na górze ekranu (bez żurawia)
     const pivotScreenX = pendulumPivotX;
-    const pivotScreenY = craneHeight; // Na dole żurawia
+    const pivotScreenY = pendulumPivotY; // Na górze ekranu
     
     // Lina
     ctx.strokeStyle = '#333';
@@ -596,9 +582,6 @@ function render() {
     
     // Tło
     renderBackground();
-    
-    // Żuraw jest zawsze widoczny (również w menu)
-    renderCrane();
     
     // Hak i lina są widoczne w menu i podczas gry
     if (gameState === GAME_STATE.PLAYING || gameState === GAME_STATE.MENU) {
