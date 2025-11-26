@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OX Bloxx</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="menuScreen" class="screen">
+        <h1 class="title">OX Bloxx</h1>
+        <div class="instructions">
+            <p>Kliknij, aby upuścić blok</p>
+            <p>Zbuduj jak najwyższy wieżowiec</p>
+            <p>Uważaj, żeby blok nie spadł obok</p>
+        </div>
+        <button id="startButton" class="button">Start gry</button>
+    </div>
+    
+    <div id="gameOverScreen" class="screen hidden">
+        <h2>Koniec gry!</h2>
+        <p id="gameOverMessage"></p>
+        <button id="restartButton" class="button">Zagraj ponownie</button>
+    </div>
+    
+    <div id="victoryScreen" class="screen hidden">
+        <h2>Gratulacje!</h2>
+        <p>Osiągnąłeś cel wysokości!</p>
+        <button id="victoryRestartButton" class="button">Zagraj ponownie</button>
+    </div>
+    
+    <div id="hud" class="hud hidden">
+        <div class="hud-item">Bloki: <span id="blockCount">0</span></div>
+        <div class="hud-item">Cel: <span id="targetBlocks">20</span></div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
